@@ -91,7 +91,7 @@ FROM
     energy_readings
 WHERE 
    timestamp >= '2024-08-16 09:00:00'
-&& TIME(timestamp) BETWEEN '09:00:00' AND '17:00:00'
+&& TIME(timestamp) BETWEEN '09:00:00' AND '19:00:00'
 GROUP BY 
     TimeSlot
 ORDER BY 
@@ -109,7 +109,7 @@ FROM
     energy_readings
 WHERE 
   timestamp >= '2024-08-16 09:00:00'
-&& TIME(timestamp) BETWEEN '09:00:00' AND '17:00:00'
+&& TIME(timestamp) BETWEEN '09:00:00' AND '19:00:00'
 GROUP BY 
     TimeSlot
 ORDER BY 
@@ -125,7 +125,7 @@ FROM
     energy_readings
 WHERE 
        timestamp >= '2024-08-16 09:00:00'
-&& TIME(timestamp) BETWEEN '09:00:00' AND '17:00:00'
+&& TIME(timestamp) BETWEEN '09:00:00' AND '19:00:00'
 GROUP BY 
     TimeSlot
 ORDER BY 
@@ -144,9 +144,9 @@ def prepare_data(results):
 
     for row in results:
         time_slots.append(row[0])
-        min_values.append(float(row[2]))  # MinCurrentValue
+        min_values.append(float(row[3]))  # MinCurrentValue
         max_values.append(float(row[1]))  # MaxCurrentValue
-        avg_values.append(float(row[3]))  # AverageCurrentValue
+        avg_values.append(float(row[2]))  # AverageCurrentValue
 
     return time_slots, min_values, max_values, avg_values
 
