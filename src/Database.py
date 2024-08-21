@@ -2,7 +2,7 @@ import mysql.connector
 from mysql.connector import Error
 import json
 from contextlib import contextmanager
-import matplotlib.pyplot as plt
+from plot_graph import plot_graph
 # MySQL bağlantı bilgileri
 DB_CONFIG = {
     'host': 'localhost',
@@ -24,7 +24,7 @@ def get_connection_and_cursor():
         print(f"Error while connecting to MySQL: {e}")
         yield None, None
     finally:
-        if cursor :
+        if cursor:
             cursor.close()
         if connection:
             connection.close()
@@ -70,37 +70,100 @@ def insert_data(current_data, power_active_data):
                 print(f"Error while inserting data: {e}")
 
 def execute_query(query):
-    """Verilen SQL sorgusunu çalıştırır ve sonuçları yazdırır."""
+    """Verilen SQL sorgusunu çalıştırır ve sonuçları döndürür."""
     with get_connection_and_cursor() as (connection, cursor):
         if connection and cursor:
             try:
-                # Sorguyu çalıştır
                 cursor.execute(query)
-
-                # Sonuçları al
-                results = cursor.fetchall()
-
-                # Sonuçları yazdır
-                for row in results:
-                    print(row)
+                return cursor.fetchall()
             except Error as e:
                 print(f"Error while executing query: {e}")
+                return []
 
-# Örnek kullanım:
-query = """
+# 10 Dakikalık Veriler İçin Sorgu
+query_10_min = """
 SELECT 
-    DATE_FORMAT(timestamp - INTERVAL MINUTE(timestamp) % 60 MINUTE, '%Y-%m-%d %H:%i:00') AS TimeSlot,
-    MAX(current_data) AS MaxCurrentValue,
-    AVG(current_data) AS AverageCurrentValue,
-    MIN(current_data) AS MinCurrentValue
+    DATE_FORMAT(timestamp - INTERVAL MINUTE(timestamp) % 10 MINUTE, '%Y-%m-%d %H:%i:00') AS TimeSlot,
+    MAX(CAST(current_data AS DECIMAL(10, 2))) AS MaxCurrentValue,
+    AVG(CAST(current_data AS DECIMAL(10, 2))) AS AverageCurrentValue,
+    MIN(CAST(current_data AS DECIMAL(10, 2))) AS MinCurrentValue
 FROM 
     energy_readings
 WHERE 
-    timestamp >= '2024-08-16 09:00:00'
+   timestamp >= '2024-08-16 09:00:00'
+&& TIME(timestamp) BETWEEN '09:00:00' AND '17:00:00'
 GROUP BY 
     TimeSlot
 ORDER BY 
     TimeSlot;
 """
 
-execute_query(query)
+# 60 Dakikalık Veriler İçin Sorgu
+query_60_min = """
+SELECT 
+    DATE_FORMAT(timestamp - INTERVAL MINUTE(timestamp) % 60 MINUTE, '%Y-%m-%d %H:%i:00') AS TimeSlot,
+    MAX(CAST(current_data AS DECIMAL(10, 2))) AS MaxCurrentValue,
+    AVG(CAST(current_data AS DECIMAL(10, 2))) AS AverageCurrentValue,
+    MIN(CAST(current_data AS DECIMAL(10, 2))) AS MinCurrentValue
+FROM 
+    energy_readings
+WHERE 
+  timestamp >= '2024-08-16 09:00:00'
+&& TIME(timestamp) BETWEEN '09:00:00' AND '17:00:00'
+GROUP BY 
+    TimeSlot
+ORDER BY 
+    TimeSlot;
+"""
+query_1_day = """
+SELECT 
+    DATE_FORMAT(timestamp, '%Y-%m-%d') AS TimeSlot,
+    MAX(CAST(current_data AS DECIMAL(10, 2))) AS MaxCurrentValue,
+    AVG(CAST(current_data AS DECIMAL(10, 2))) AS AverageCurrentValue,
+    MIN(CAST(current_data AS DECIMAL(10, 2))) AS MinCurrentValue
+FROM 
+    energy_readings
+WHERE 
+       timestamp >= '2024-08-16 09:00:00'
+&& TIME(timestamp) BETWEEN '09:00:00' AND '17:00:00'
+GROUP BY 
+    TimeSlot
+ORDER BY 
+    TimeSlot;
+
+"""
+
+
+
+def prepare_data(results):
+    """Verileri ayrıştırır ve grafiğe uygun formatta döndürür."""
+    time_slots = []
+    min_values = []
+    max_values = []
+    avg_values = []
+
+    for row in results:
+        time_slots.append(row[0])
+        min_values.append(float(row[2]))  # MinCurrentValue
+        max_values.append(float(row[1]))  # MaxCurrentValue
+        avg_values.append(float(row[3]))  # AverageCurrentValue
+
+    return time_slots, min_values, max_values, avg_values
+
+
+results_10_min = execute_query(query_10_min)
+
+# 60 Dakikalık Verileri Çek
+results_60_min = execute_query(query_60_min)
+
+results_1_day=execute_query(query_1_day)
+
+# Verileri Hazırla
+time_slots_10_min, min_values_10_min, max_values_10_min, avg_values_10_min = prepare_data(results_10_min)
+time_slots_60_min, min_values_60_min, max_values_60_min, avg_values_60_min = prepare_data(results_60_min)
+time_slots_1_day,min_values_1_day,max_values_1_day,avg_values_1_day=prepare_data(results_1_day)
+
+# Grafik Çizdir
+plot_graph(time_slots_10_min, min_values_10_min, max_values_10_min, avg_values_10_min,
+           time_slots_60_min, min_values_60_min, max_values_60_min, avg_values_60_min,
+           time_slots_1_day,min_values_1_day,max_values_1_day,avg_values_1_day)
